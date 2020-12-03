@@ -1,0 +1,117 @@
+
+#ifndef __DEFINE_H
+#define __DEFINE_H
+
+
+#define GET_IMAGE_ERR "Image_err_"
+#define FTP_IMAGE_ERR "Image_err_ftp_"
+
+#define USER_DEBUG 1
+
+#include "time.h"
+#define LORA_NSS    GPIO_NUM_15
+
+
+#define ETH_RESET_PIN   GPIO_NUM_18
+#define ETH_CS_PIN     GPIO_NUM_19
+
+#define SIM_RESET   GPIO_NUM_27
+#define SIM_TX      GPIO_NUM_16
+#define SIM_RX      GPIO_NUM_17
+
+#define PIN_NUM_MISO    GPIO_NUM_12
+#define PIN_NUM_MOSI    GPIO_NUM_13
+#define PIN_NUM_CLK    GPIO_NUM_14
+
+#define RS485_E     GPIO_NUM_25
+#define RS485_TX    GPIO_NUM_33
+#define RS485_RX    GPIO_NUM_26
+
+#define RELAY_SELECT GPIO_NUM_4
+
+#define LED_STATUS_1 GPIO_NUM_2
+#define TURN_ON_LED_1   gpio_set_level(LED_STATUS_1, 0)
+#define TURN_OFF_LED_1  gpio_set_level(LED_STATUS_1, 1)
+
+#define LED_STATUS_2 GPIO_NUM_5
+#define TURN_ON_LED_2   gpio_set_level(LED_STATUS_2, 0)
+#define TURN_OFF_LED_2  gpio_set_level(LED_STATUS_2, 1)
+
+
+struct _time
+{
+    uint64_t Saved_Time;
+    uint64_t Waiting_Time;
+};
+
+typedef struct
+{
+    struct _time time;
+    uint8_t Volume;
+    uint8_t Volume_tmp[4];
+    uint8_t cnt_tmp;
+    char description[10];
+    uint16_t description_len;
+    uint32_t Vol;
+    uint32_t cnt;
+}_Energy;
+
+typedef struct
+{
+    char ImageName[50];
+    uint8_t status;
+    char description[10];
+    uint16_t description_len;
+}_Camera;
+
+typedef struct
+{
+    uint8_t ID;
+    uint16_t reg;
+    uint16_t data;
+    uint16_t data_t;
+    uint8_t status;
+    uint16_t description_len;
+    char description[256];
+    uint8_t active;
+    uint8_t cnt_err;
+}Sensor_t;
+
+typedef struct {
+	  Sensor_t Rain;
+	  Sensor_t Water_level;
+	  Sensor_t Salinity;
+	  Sensor_t Ph;
+	  _Energy Acquy;
+	  _Camera Cam;
+
+
+}_StationData;
+
+typedef struct {
+	int ID; // id tram
+	char *Server_Url;
+    char *Data_URL;
+    char *Ota_URL;
+    char *ApiKey;
+    char *UploadUrl;
+    uint32_t Delaytime;                //time update data without any change
+    uint16_t HL;                //high threshold
+    uint16_t LV;                //low threshold
+    uint16_t HH;                //H0
+    uint8_t IsUpdate;
+    uint8_t  IsReset;
+    uint8_t	 IsUpdateName;
+    char Unix_Time[50];         //time when get config
+    uint8_t TurnonLed;
+    uint8_t gio;
+    uint8_t phut;
+    uint32_t Cnt;
+}_StationConfig;
+
+
+
+uint64_t Get_mili(void);
+void delay(int dl);
+void  SD_Card_Write_Data(char *Path,char *data);
+#endif
