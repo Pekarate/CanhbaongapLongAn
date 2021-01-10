@@ -107,6 +107,6 @@ void smsRead(SMS_Messages *SMSmesg, int sort);
  * Delete the message at GSM message index 'idx'
  */
 int smsDelete(int idx);
-
+int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize, int timeout, char **response, int size);
 
 #endif

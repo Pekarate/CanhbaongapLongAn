@@ -15,6 +15,7 @@ set(COMPONENT_SRCS "main.c"
 					"ModbusMaster.c"
 					"Sensor.c"
 					"power.c"
+					"Wifiap.c"
 					"Kbvison_cam.c")
 set(COMPONENT_ADD_INCLUDEDIRS "")
 register_component()

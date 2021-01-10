@@ -95,15 +95,15 @@ static GSM_Cmd cmd_NoSMSInd =
 	.skip = 0,
 };
 
-// static GSM_Cmd cmd_Reset =
-// {
-// 	.cmd = "ATZ\r\n",
-// 	.cmdSize = sizeof("ATZ\r\n")-1,
-// 	.cmdResponseOnOk = GSM_OK_Str,
-// 	.timeoutMs = 300,
-// 	.delayMs = 0,
-// 	.skip = 0,
-// };
+static GSM_Cmd cmd_Reset =
+{
+	.cmd = "AT+QPOWD\r\n",
+	.cmdSize = sizeof("AT+QPOWD\r\n")-1,
+	.cmdResponseOnOk = GSM_OK_Str,
+	.timeoutMs = 300,
+	.delayMs = 30000,
+	.skip = 0,
+};
 
 static GSM_Cmd cmd_RFOn =
 {
@@ -114,6 +114,16 @@ static GSM_Cmd cmd_RFOn =
 	.delayMs = 1000,
 	.skip = 0,
 };
+static GSM_Cmd power_save_disable =
+{
+	.cmd = "AT+CFUN=1\r\n",
+	.cmdSize = sizeof("ATCFUN=1,0\r\n")-1,
+	.cmdResponseOnOk = GSM_OK_Str,
+	.timeoutMs = 10000,
+	.delayMs = 1000,
+	.skip = 0,
+};
+
 
 static GSM_Cmd cmd_EchoOff =
 {
@@ -157,10 +167,10 @@ static GSM_Cmd cmd_APN =
 
 static GSM_Cmd cmd_Connect =
 {
-	.cmd = "AT+CGDATA=\"PPP\",1\r\n",
-	.cmdSize = sizeof("AT+CGDATA=\"PPP\",1\r\n")-1,
-	//.cmd = "ATDT*99***1#\r\n",
-	//.cmdSize = sizeof("ATDT*99***1#\r\n")-1,
+	//.cmd = "AT+CGDATA=\"PPP\",1\r\n",
+	//.cmdSize = sizeof("AT+CGDATA=\"PPP\",1\r\n")-1,
+	.cmd = "ATDT*99#\r\n",
+	.cmdSize = sizeof("ATDT*99#\r\n")-1,
 	.cmdResponseOnOk = "CONNECT",
 	.timeoutMs = 30000,
 	.delayMs = 1000,
@@ -170,10 +180,10 @@ static GSM_Cmd cmd_Connect =
 static GSM_Cmd *GSM_Init[] =
 {
 		&cmd_AT,
-//		&cmd_Reset,
+		&cmd_Reset,
 		&cmd_EchoOff,
 		&cmd_RFOn,
-		&cmd_NoSMSInd,
+//		&cmd_NoSMSInd,
 		&cmd_Pin,
 		&cmd_Reg,
 		&cmd_APN,
@@ -326,7 +336,7 @@ static void infoCommand(char *cmd, int cmdSize, char *info)
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize, int timeout, char **response, int size)
+int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize, int timeout, char **response, int size)
 {
 	char sresp[256] = {'\0'};
 	char data[256] = {'\0'};

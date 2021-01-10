@@ -39,6 +39,9 @@
 #include "driver/uart.h"
 #include "driver/gpio.h"
 #include "esp_task_wdt.h"
+#include "soc/rtc_wdt.h"
+#include "Wifiap.h"
+#include "esp_sleep.h"
 
 #if USER_DEBUG
     static const char *TAG = "[MAIN]";
@@ -88,7 +91,7 @@ void app_main(void)
 
 	System_Timer();
 	GPIO_Config();
-	StConfig.ID =9505;
+	StConfig.ID =6201;
 	Power_Init();
 	StationCongig_Init();
 	if(ModbusMaster_Init() != 1)
@@ -98,15 +101,24 @@ void app_main(void)
     ESP_LOGI(TAG,"Modbus Init done");
 
 	DNS_server_init();
+
 	Spi_Ethernet_Init();
-	
 	Turn_off_all_relay();
     ESP_LOGI(TAG,"reset all device 30s cpu clock: %d\n",ets_get_cpu_frequency());
-    Turn_on_relay(RELAY_1);
-    vTaskDelay(3000);
-    Turn_off_relay(RELAY_1);
 
+	Turn_on_relay(RELAY_1);
+	ESP_LOGI(TAG,"Turn_on_relay: %d\n",ets_get_cpu_frequency());
+	vTaskDelay(2000);
 
+	// while(1)
+	// {
+	// 	    Turn_on_relay(RELAY_1);
+	// 		ESP_LOGI(TAG,"Turn_on_relay: %d\n",ets_get_cpu_frequency());
+	// 		vTaskDelay(1000);
+	// 		Turn_off_relay(RELAY_1);
+	// 		ESP_LOGI(TAG,"Turn_off_relay: %d\n",ets_get_cpu_frequency());
+	// 		vTaskDelay(1000);
+	// }
     /*---------begin int ota server------------ */
 	//Get_ip_server(StConfig.Server_Url,IP_server);
     // Server.ApiKey = malloc(100);
@@ -148,6 +160,7 @@ void app_main(void)
 	esp_http_client_set_header(Dataclient,"APIKEY",StConfig.ApiKey);
 	uint8_t try = 3;
 	char Image_tmp[30];
+	wifi_init_softap();
 
 	if (ppposInit() < 0) {
 		ESP_LOGE(TAG,"ppposInit faile,module offline\n");
@@ -155,9 +168,12 @@ void app_main(void)
 		//SD_Card_Write_Data(err_path,Sd_buff);
     }/*--------end init module 3G------------*/
 
-	start_get_power =Get_mili();
-	Start_Get_Time =Get_mili();
-	Start_Post_Time=Get_mili();
+
+
+
+	start_get_power =0;
+	Start_Get_Time =0;
+	Start_Post_Time=0;
     while (1) {
 		//esp_task_wdt_reset();
 		//esp_task_wdt_feed();
@@ -168,12 +184,12 @@ void app_main(void)
 			if(StData.Acquy.Volume < 15 )
 			{
 				ESP_LOGE(TAG," -------turn off all device\n");
-				Turn_on_relay(RELAY_1);
+				//Turn_on_relay(RELAY_1);
 			}
 			if(StData.Acquy.Volume>40)
 			{
 				ESP_LOGI(TAG," -------turn on all device\n");
-				Turn_off_relay(RELAY_1);
+				//Turn_off_relay(RELAY_1);
 			}
 			start_get_power +=300000;
 		}
@@ -260,7 +276,24 @@ void app_main(void)
 		{
 			esp_restart();
 		}
-		vTaskDelay(15000/portTICK_PERIOD_MS);
+		if(StConfig.Delaytime>=5)
+		{
+			Turn_off_relay(RELAY_1);
+			ppposDisconnect(1,1);
+			vTaskDelay(StConfig.Delaytime *60*1000);
+			// ESP_LOGI(TAG,"ppposStatus wait idle");
+			// while(ppposStatus() != GSM_STATE_IDLE);
+			// ESP_LOGI(TAG,"uc enter CFUN=4");
+			// atCmd_waitResponse("AT+CFUN=4\r\n", "OK\r\n", NULL, -1, 1000, NULL, 0);
+			//esp_sleep_enable_timer_wakeup(StConfig.Delaytime *60*1000);
+		}
+		else
+		{
+			
+		}
+		vTaskDelay(1);
+		rtc_wdt_feed();
+		
     }
 	
 }
@@ -359,7 +392,8 @@ void StationCongig_Init()
 	sprintf(StConfig.Server_Url,"canhbaongap.com");
 	sprintf(StConfig.Data_URL,"http://api.canhbaongap.com/quantrac.php");
 	sprintf(StConfig.Ota_URL,"http://firmware.namlongtekgroup.com/GetfileUpdate");
-	sprintf(StConfig.ApiKey,"B423713AB2769F83889D9520C6794656");
+	//sprintf(StConfig.ApiKey,"B423713AB2769F83889D9520C6794656");
+	sprintf(StConfig.ApiKey,"6DF34EFB0DE43E4CE3DB02497110F4E7");
 	sprintf(StConfig.UploadUrl,"http://api.canhbaongap.com/upload.php");
 	//sprintf(StConfig.UploadUrl,"http://quantrackhongkhi.namlongtekgroup.com/api/Embedded/InsertImage");
 	StConfig.HH = 0;
