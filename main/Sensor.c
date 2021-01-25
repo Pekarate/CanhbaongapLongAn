@@ -101,7 +101,7 @@ int Sensor_Rain_Read()
 int Sensor_Ph_read()
 {
     MBm_StateTypedef res;
-    uint16_t data_t =0;
+   // uint16_t data_t =0;
     if( (res = MBm_Read_data_hoilding(StData.Ph.ID,30001,1,&StData.Ph.data_t)) == MB_OK){         
         //process data 
         #if SENSOR_DEBUG

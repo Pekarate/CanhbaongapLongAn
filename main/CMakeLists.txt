@@ -16,6 +16,7 @@ set(COMPONENT_SRCS "main.c"
 					"Sensor.c"
 					"power.c"
 					"Wifiap.c"
+					"swing_socket_app.c"
 					"Kbvison_cam.c")
 set(COMPONENT_ADD_INCLUDEDIRS "")
 register_component()

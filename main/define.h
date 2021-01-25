@@ -9,6 +9,8 @@
 #define USER_DEBUG 1
 
 #include "time.h"
+#include "stdint.h"
+#include "string.h"
 #define LORA_NSS    GPIO_NUM_15
 
 
@@ -58,7 +60,7 @@ typedef struct
 
 typedef struct
 {
-    char ImageName[50];
+    char ImageName[100];
     uint8_t status;
     char description[10];
     uint16_t description_len;
@@ -109,9 +111,26 @@ typedef struct {
     uint32_t Cnt;
 }_StationConfig;
 
-
+extern _StationConfig StConfig;
+extern _StationData StData;
+extern char ESP_ID_CHAR[20];
 
 uint64_t Get_mili(void);
 void delay(int dl);
 void  SD_Card_Write_Data(char *Path,char *data);
+int Get_int_json(int *des,const char * json,const char *key);
+int Get_string_json(char * des,const char * json,const char *key);
+void Calib_sanity(uint16_t sample);
+void Calib_PH();
+
+
+extern int Socketcontrol_out(char *buf,int size);
+
+extern char SocketBuf[1025];
+extern int SocketBufSize;
+
+#define USER_LOGI(tag, format, ... ) ESP_LOG_LEVEL_LOCAL(ESP_LOG_INFO,tag, format, ##__VA_ARGS__);// SocketBufSize = snprintf(SocketBuf,1024,(format), ##__VA_ARGS__); Socketcontrol_out(SocketBuf,SocketBufSize)
+#define USER_LOGW(tag, format, ... ) ESP_LOG_LEVEL_LOCAL(ESP_LOG_WARN,    tag, format, ##__VA_ARGS__);// SocketBufSize = snprintf(SocketBuf,1024,(format), ##__VA_ARGS__); Socketcontrol_out(SocketBuf,SocketBufSize)
+#define USER_LOGE(tag, format, ... ) ESP_LOG_LEVEL_LOCAL(ESP_LOG_ERROR,   tag, format, ##__VA_ARGS__);// SocketBufSize = snprintf(SocketBuf,1024,(format), ##__VA_ARGS__); Socketcontrol_out(SocketBuf,SocketBufSize)
+
 #endif

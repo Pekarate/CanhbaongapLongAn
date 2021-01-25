@@ -20,6 +20,7 @@
 #include "netif/ppp/pppapi.h"
 
 #include "Uc_Sim.h"
+#include "define.h"
 uint8_t Module_connetct = 1;
 
 // === GSM configuration that you can set via 'make menuconfig'. ===
@@ -180,10 +181,10 @@ static GSM_Cmd cmd_Connect =
 static GSM_Cmd *GSM_Init[] =
 {
 		&cmd_AT,
-		&cmd_Reset,
+//		&cmd_Reset,
 		&cmd_EchoOff,
 		&cmd_RFOn,
-//		&cmd_NoSMSInd,
+		&cmd_NoSMSInd,
 		&cmd_Pin,
 		&cmd_Reg,
 		&cmd_APN,
@@ -203,15 +204,15 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 	switch(err_code) {
 		case PPPERR_NONE: {
 			#if GSM_DEBUG
-			ESP_LOGI(TAG,"status_cb: Connected");
+			USER_LOGI(TAG,"status_cb: Connected");
 			#if PPP_IPV4_SUPPORT
-			ESP_LOGI(TAG,"   ipaddr    = %s", ipaddr_ntoa(&pppif->ip_addr));
-			ESP_LOGI(TAG,"   gateway   = %s", ipaddr_ntoa(&pppif->gw));
-			ESP_LOGI(TAG,"   netmask   = %s", ipaddr_ntoa(&pppif->netmask));
+			USER_LOGI(TAG,"   ipaddr    = %s", ipaddr_ntoa(&pppif->ip_addr));
+			USER_LOGI(TAG,"   gateway   = %s", ipaddr_ntoa(&pppif->gw));
+			USER_LOGI(TAG,"   netmask   = %s", ipaddr_ntoa(&pppif->netmask));
 			#endif
 
 			#if PPP_IPV6_SUPPORT
-			ESP_LOGI(TAG,"   ip6addr   = %s", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
+			USER_LOGI(TAG,"   ip6addr   = %s", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
 			#endif
 			#endif
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
@@ -221,32 +222,32 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 		}
 		case PPPERR_PARAM: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Invalid parameter");
+			USER_LOGE(TAG,"status_cb: Invalid parameter");
 			#endif
 			break;
 		}
 		case PPPERR_OPEN: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Unable to open PPP session");
+			USER_LOGE(TAG,"status_cb: Unable to open PPP session");
 			#endif
 			break;
 		}
 		case PPPERR_DEVICE: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Invalid I/O device for PPP");
+			USER_LOGE(TAG,"status_cb: Invalid I/O device for PPP");
 			#endif
 			break;
 		}
 		case PPPERR_ALLOC: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Unable to allocate resources");
+			USER_LOGE(TAG,"status_cb: Unable to allocate resources");
 			#endif
 			break;
 		}
 		case PPPERR_USER: {
 			/* ppp_free(); -- can be called here */
 			#if GSM_DEBUG
-			ESP_LOGW(TAG,"status_cb: User interrupt (disconnected)");
+			USER_LOGW(TAG,"status_cb: User interrupt (disconnected)");
 			#endif
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 			gsm_status = GSM_STATE_DISCONNECTED;
@@ -255,7 +256,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 		}
 		case PPPERR_CONNECT: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Connection lost");
+			USER_LOGE(TAG,"status_cb: Connection lost");
 			#endif
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 			gsm_status = GSM_STATE_DISCONNECTED;
@@ -264,43 +265,43 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 		}
 		case PPPERR_AUTHFAIL: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Failed authentication challenge");
+			USER_LOGE(TAG,"status_cb: Failed authentication challenge");
 			#endif
 			break;
 		}
 		case PPPERR_PROTOCOL: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Failed to meet protocol");
+			USER_LOGE(TAG,"status_cb: Failed to meet protocol");
 			#endif
 			break;
 		}
 		case PPPERR_PEERDEAD: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Connection timeout");
+			USER_LOGE(TAG,"status_cb: Connection timeout");
 			#endif
 			break;
 		}
 		case PPPERR_IDLETIMEOUT: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Idle Timeout");
+			USER_LOGE(TAG,"status_cb: Idle Timeout");
 			#endif
 			break;
 		}
 		case PPPERR_CONNECTTIME: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Max connect time reached");
+			USER_LOGE(TAG,"status_cb: Max connect time reached");
 			#endif
 			break;
 		}
 		case PPPERR_LOOPBACK: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Loopback detected");
+			USER_LOGE(TAG,"status_cb: Loopback detected");
 			#endif
 			break;
 		}
 		default: {
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"status_cb: Unknown error code %d", err_code);
+			USER_LOGE(TAG,"status_cb: Unknown error code %d", err_code);
 			#endif
 			break;
 		}
@@ -332,7 +333,7 @@ static void infoCommand(char *cmd, int cmdSize, char *info)
 		else buf[i] = cmd[i];
 		if (buf[i] == '\0') break;
 	}
-	ESP_LOGI(TAG,"%s [%s]", info, buf);
+	USER_LOGI(TAG,"%s [%s]", info, buf);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -396,7 +397,7 @@ int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize, int ti
 				// Check the response
 				if (strstr(sresp, resp) != NULL) {
 					#if GSM_DEBUG
-					ESP_LOGI(TAG,"AT RESPONSE: [%s]", sresp);
+					USER_LOGI(TAG,"AT RESPONSE: [%s]", sresp);
 					#endif
 					break;
 				}
@@ -404,7 +405,7 @@ int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize, int ti
 					if (resp1 != NULL) {
 						if (strstr(sresp, resp1) != NULL) {
 							#if GSM_DEBUG
-							ESP_LOGI(TAG,"AT RESPONSE (1): [%s]", sresp);
+							USER_LOGI(TAG,"AT RESPONSE (1): [%s]", sresp);
 							#endif
 							res = 2;
 							break;
@@ -412,7 +413,7 @@ int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize, int ti
 					}
 					// no match
 					#if GSM_DEBUG
-					ESP_LOGI(TAG,"AT BAD RESPONSE: [%s]", sresp);
+					USER_LOGI(TAG,"AT BAD RESPONSE: [%s]", sresp);
 					#endif
 					res = 0;
 					break;
@@ -424,7 +425,7 @@ int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize, int ti
 		if (timeoutCnt > timeout) {
 			// timeout
 			#if GSM_DEBUG
-			ESP_LOGE(TAG,"AT: TIMEOUT");
+			USER_LOGE(TAG,"AT: TIMEOUT");
 			#endif
 			res = 0;
 			break;
@@ -441,7 +442,7 @@ int change_baudrate_speed(uint32_t baud)
 	if (res == 1) {
 			esp_err_t err= uart_set_baudrate(uart_num,baud);
 			if(err == ESP_OK)
-				ESP_LOGI(TAG,"set baurate: %d done",baud);	
+				USER_LOGI(TAG,"set baurate: %d done",baud);	
 			return 0;			
 	}
 	return -1;
@@ -459,7 +460,7 @@ static void _disconnect(uint8_t rfOff)
 	}
 
 	#if GSM_DEBUG
-	ESP_LOGI(TAG,"ONLINE, DISCONNECTING...");
+	USER_LOGI(TAG,"ONLINE, DISCONNECTING...");
 	#endif
 	vTaskDelay(1000 / portTICK_PERIOD_MS);
 	uart_flush(uart_num);
@@ -473,7 +474,7 @@ static void _disconnect(uint8_t rfOff)
 		n++;
 		if (n > 10) {
 			#if GSM_DEBUG
-			ESP_LOGI(TAG,"STILL CONNECTED.");
+			USER_LOGI(TAG,"STILL CONNECTED.");
 			#endif
 			if(n >20)
 			{
@@ -497,7 +498,7 @@ static void _disconnect(uint8_t rfOff)
 		res = atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 3000, NULL, 0);
 	}
 	#if GSM_DEBUG
-	ESP_LOGI(TAG,"DISCONNECTED.");
+	USER_LOGI(TAG,"DISCONNECTED.");
 	#endif
 }
 
@@ -516,7 +517,7 @@ static void enableAllInitCmd()
 //-----------------------------
 static void pppos_client_task()
 {
-	ESP_LOGW(TAG,"baud speed : %d",UART_BDRATE);
+	USER_LOGW(TAG,"baud speed : %d",UART_BDRATE);
 	vTaskDelay(100);
 	xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 	pppos_task_started = 1;
@@ -526,7 +527,7 @@ static void pppos_client_task()
     char* data = (char*) malloc(BUF_SIZE);
     if (data == NULL) {
 		#if GSM_DEBUG
-		ESP_LOGE(TAG,"Failed to allocate data buffer.");
+		USER_LOGE(TAG,"Failed to allocate data buffer.");
 		#endif
     	goto exit;
     }
@@ -535,8 +536,8 @@ static void pppos_client_task()
 	if (gpio_set_direction(UART_GPIO_RX, GPIO_MODE_INPUT)) goto exit;
 	if (gpio_set_pull_mode(UART_GPIO_RX, GPIO_PULLUP_ONLY)) goto exit;
 
-	char PPP_ApnATReq[sizeof(CONFIG_GSM_APN)+24];
-	
+	char PPP_ApnATReq[sizeof(CONFIG_GSM_APN)+50];
+	uart_driver_delete(uart_num);
 	uart_config_t uart_config = {
 			.baud_rate = UART_BDRATE,
 			.data_bits = UART_DATA_8_BITS,
@@ -551,6 +552,8 @@ static void pppos_client_task()
 	if (uart_set_pin(uart_num, UART_GPIO_TX, UART_GPIO_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE)) goto exit;
 	if (uart_driver_install(uart_num, BUF_SIZE * 4, BUF_SIZE * 2, 0, NULL, 0)) goto exit;
 
+	
+
 	// Set APN from config
 	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n", CONFIG_GSM_APN);
 	cmd_APN.cmd = PPP_ApnATReq;
@@ -558,7 +561,7 @@ static void pppos_client_task()
 	_disconnect(1); // Disconnect if connected
 	if(Module_connetct == 0)
 	{
-		ESP_LOGE(TAG,"Module_connetct == 0 vTaskDelete");
+		USER_LOGE(TAG,"Module_connetct == 0 vTaskDelete");
 		vTaskDelete(NULL);
 	}
 	#if UART_BDRATE != 115200
@@ -575,7 +578,7 @@ static void pppos_client_task()
 	while(1)
 	{
 		#if GSM_DEBUG
-		ESP_LOGI(TAG,"GSM initialization start");
+		USER_LOGI(TAG,"GSM initialization start");
 		#endif
 		vTaskDelay(500 / portTICK_PERIOD_MS);
 
@@ -598,7 +601,7 @@ static void pppos_client_task()
 			{
 				// * No response or not as expected, start from first initialization command
 				#if GSM_DEBUG
-				ESP_LOGW(TAG,"Wrong response, restarting...");
+				USER_LOGW(TAG,"Wrong response, restarting...");
 				#endif
 
 				nfail++;
@@ -617,7 +620,7 @@ static void pppos_client_task()
 		}
 
 		#if GSM_DEBUG
-		ESP_LOGI(TAG,"GSM initialized.");
+		USER_LOGI(TAG,"GSM initialized.");
 		#endif
 
 		xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
@@ -629,7 +632,7 @@ static void pppos_client_task()
 
 			if (ppp == NULL) {
 				#if GSM_DEBUG
-				ESP_LOGE(TAG, "Error initializing PPPoS");
+				USER_LOGE(TAG, "Error initializing PPPoS");
 				#endif
 				break; // end task
 			}
@@ -657,7 +660,7 @@ static void pppos_client_task()
 				xSemaphoreGive(pppos_mutex);
 				#if GSM_DEBUG
 					printf("\r\n");
-					ESP_LOGI(TAG, "Disconnect requested.");
+					USER_LOGI(TAG, "Disconnect requested.");
 				#endif
 				pppapi_close(ppp, 0);
 				int gstat = 1;
@@ -683,7 +686,7 @@ static void pppos_client_task()
 				_disconnect(rfoff); // Disconnect GSM if still connected
 
 				#if GSM_DEBUG
-				ESP_LOGI(TAG, "Disconnected.");
+				USER_LOGI(TAG, "Disconnected.");
 				#endif
 
 				gsmCmdIter = 0;
@@ -705,7 +708,7 @@ static void pppos_client_task()
 				}
 				#if GSM_DEBUG
 				printf("\r\n");
-				ESP_LOGI(TAG, "Reconnect requested.");
+				USER_LOGI(TAG, "Reconnect requested.");
 				#endif
 				break;
 			}
@@ -715,7 +718,7 @@ static void pppos_client_task()
 				xSemaphoreGive(pppos_mutex);
 				#if GSM_DEBUG
 				printf("\r\n");
-				ESP_LOGE(TAG, "Disconnected, trying again...");
+				USER_LOGE(TAG, "Disconnected, trying again...");
 				#endif
 				pppapi_close(ppp, 0);
 
@@ -751,7 +754,7 @@ exit:
 	gsm_status = GSM_STATE_FIRSTINIT;
 	xSemaphoreGive(pppos_mutex);
 	#if GSM_DEBUG
-	ESP_LOGE(TAG, "PPPoS TASK TERMINATED");
+	USER_LOGE(TAG, "PPPoS TASK TERMINATED");
 	#endif
 	vTaskDelete(NULL);
 }

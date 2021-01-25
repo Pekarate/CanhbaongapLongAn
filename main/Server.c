@@ -16,14 +16,13 @@ extern char *info_path ;
 extern char *err_path  ;
 extern char *data_path ;
 
-static int Get_string_json(char * des,const char * json,const char *key);
-static int Get_int_json(int *des,const char * json,const char *key);
+
 
 static void Process_Data_recever(char *data)
 {
     int res =0;
     int change = 0;
-    ESP_LOGI(TAG, "Data processing: %s",data);
+    USER_LOGI(TAG, "Data processing: %s",data);
 
     if(Get_int_json(&res,data,"TM")>0)
     {
@@ -32,10 +31,10 @@ static void Process_Data_recever(char *data)
                 change = 1;
             StConfig.Delaytime= res;
         }
-        else          ESP_LOGE(TAG, "Delaytime value wrong:%d",res);
+        else          USER_LOGE(TAG, "Delaytime value wrong:%d",res);
     }
     else
-        ESP_LOGE(TAG, " Delaytime can't be found");
+        USER_LOGE(TAG, " Delaytime can't be found");
 
     if(Get_int_json(&res,data,"HL")>=0)
     {
@@ -45,11 +44,11 @@ static void Process_Data_recever(char *data)
             StConfig.HL= res;
         }
         else{
-                ESP_LOGE(TAG, "HL value wrong:%d",res);
+                USER_LOGE(TAG, "HL value wrong:%d",res);
         }
     }
     else
-        ESP_LOGE(TAG, " HL can't be found");
+        USER_LOGE(TAG, " HL can't be found");
 
     if(Get_int_json(&res,data,"LV")>=0)
     {
@@ -58,10 +57,10 @@ static void Process_Data_recever(char *data)
                 change = 1;
             StConfig.LV= res;
         }
-        else       	ESP_LOGE(TAG, "LV value wrong:%d",res);
+        else       	USER_LOGE(TAG, "LV value wrong:%d",res);
     }
     else
-        ESP_LOGE(TAG, " LV can't be found");
+        USER_LOGE(TAG, " LV can't be found");
 
     if(Get_int_json(&res,data,"HH")>=0)
     {
@@ -70,29 +69,29 @@ static void Process_Data_recever(char *data)
                 change = 1;
             StConfig.HH= res;
         }
-        else        ESP_LOGE(TAG, "HH value wrong:%d",res);
+        else        USER_LOGE(TAG, "HH value wrong:%d",res);
 
     }
-    else	ESP_LOGE(TAG, " HH can't be found");
+    else	USER_LOGE(TAG, " HH can't be found");
     if(Get_int_json(&res,data,"hh")>=0)
 	{
 		if(res>= 0)    StConfig.gio = res;
-		else		ESP_LOGE(TAG, "cf-> hh fail");
+		else		USER_LOGE(TAG, "cf-> hh fail");
 	}
-	else	ESP_LOGE(TAG, "hh can't be found");
+	else	USER_LOGE(TAG, "hh can't be found");
 	if(Get_int_json(&res,data,"mm")>=0)
 	{
 		if(res>= 0)    StConfig.phut = res;
 		else{
-			 ESP_LOGE(TAG, "cf-> mm fail");
+			 USER_LOGE(TAG, "cf-> mm fail");
 		}
 	}
-	else	ESP_LOGE(TAG, "mm can't be found");
+	else	USER_LOGE(TAG, "mm can't be found");
 	if(Get_int_json(&res,data,"RST")>-1)
 	{
 		if((res == 0) ||(res == 1))
 			StConfig.IsReset =res;
-		else	ESP_LOGE(TAG, "IsReset value wrong:%d",res);
+		else	USER_LOGE(TAG, "IsReset value wrong:%d",res);
 	}
     if(Get_int_json(&res,data,"UD")>=0)
 	{
@@ -101,24 +100,24 @@ static void Process_Data_recever(char *data)
             StConfig.IsUpdate =res;
             if(res == 1)
             {     
-                ESP_LOGW(TAG, "new firmware is readly");
+                USER_LOGW(TAG, "new firmware is readly");
             }
             else
             {
-                ESP_LOGW(TAG, "No update request");
+                USER_LOGW(TAG, "No update request");
             }
             
         }
-		else	ESP_LOGE(TAG, "IsUpdate value wrong:%d",res);
+		else	USER_LOGE(TAG, "IsUpdate value wrong:%d",res);
 	}
 	if(StConfig.IsUpdateName ==1)
 	{
 		if(Get_string_json(StartImgName,data,"ImgName")>0)
 		{
 			StConfig.IsUpdateName =0;
-			ESP_LOGI(TAG, "StartImgName : %s",StartImgName);
+			USER_LOGI(TAG, "StartImgName : %s",StartImgName);
 		}
-		else ESP_LOGE(TAG, "ImgName can't be found");
+		else USER_LOGE(TAG, "ImgName can't be found");
 	}
     if(change ==1)
     {
@@ -146,7 +145,7 @@ int esp_server_get_config(esp_http_client_handle_t client)
 		int ss = esp_http_client_read(client,BodyData,2048);
 		if(ss>50)
 		{
-			ESP_LOGI(TAG, "HTTP get config : %d byte", ss);
+			USER_LOGI(TAG, "HTTP get config : %d byte", ss);
 			BodyData[ss]=0;
 			Process_Data_recever(BodyData);
             
@@ -154,7 +153,7 @@ int esp_server_get_config(esp_http_client_handle_t client)
 	}
 	else
 	{
-		ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
+		USER_LOGE(TAG, "HTTP POST request failed: %s,code : %d", esp_err_to_name(err),Status_code);
 	}
 //    esp_http_client_set_post_field(client, BodyData, len);
 //    err = esp_http_client_perform(client);
@@ -163,13 +162,13 @@ int esp_server_get_config(esp_http_client_handle_t client)
 //            int ss = esp_http_client_read(client,BodyData,2048);
 //            if(ss>50)
 //            {
-//            	ESP_LOGI(TAG, "HTTP POST request failed: %d", ss);
+//            	USER_LOGI(TAG, "HTTP POST request failed: %d", ss);
 //            	BodyData[ss]=0;
 //            	Process_Data_recever(BodyData);
 //            }
 //        }
 //    } else {
-//        ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
+//        USER_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
 //    }
 ////    esp_http_client_cleanup(client);
     esp_http_client_close(client);
@@ -206,42 +205,15 @@ int Network_Send_StationData(esp_http_client_handle_t client)
 		if(ss>50)
 		{
 			BodyData[ss]=0;
-			ESP_LOGI(TAG, "HTTP POST data received : %d byte %s", ss,BodyData);
+			USER_LOGI(TAG, "HTTP POST data received : %d byte %s", ss,BodyData);
 			//Process_Data_recever(BodyData);
 		}
 	}
 	else
 	{
-		ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
+		USER_LOGE(TAG, "HTTP POST request failed: %s,Status_code: %d", esp_err_to_name(err),Status_code);
 	}
     esp_http_client_close(client);
     
     return Status_code;
-}
-static int Get_string_json(char * des,const char * json,const char *key)
-{
-    char * sub = strstr(json,key);
-    //printf("%s\n",sub );
-    int len = strlen (key) +3;
-
-    char *sub1 = (strstr(sub+len,"\""));
-    //printf("%s\n",sub1 );
-    int des_len = strlen(sub+len) - strlen(sub1);
-    if(sub != NULL)
-    {
-        memcpy(des,(sub+len), des_len);
-        des[des_len]=0;
-        return des_len;
-    }
-    return -1;
-}
-static int Get_int_json(int *des,const char * json,const char *key)
-{
-    char tmp[50];
-    if(Get_string_json(tmp,json,key)>0)
-    {
-        *des =  atoi(tmp);
-        return *des;
-    }
-    return -1;
 }

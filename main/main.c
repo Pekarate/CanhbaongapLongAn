@@ -17,7 +17,7 @@
 #include "ModbusMaster.h"
 #include "esp_wifi.h"
 #include "esp_log.h"
-#include "esp_event_loop.h"
+#include "esp_event.h"
 #include "nvs_flash.h"
 #include <lwip/dns.h>
 
@@ -26,7 +26,10 @@
 
 
 #include "lwipopts.h"
+
 #include "define.h"
+
+
 #include "lwip/err.h"
 #include "lwip/sys.h"
 #include "lwip/netdb.h"
@@ -42,6 +45,11 @@
 #include "soc/rtc_wdt.h"
 #include "Wifiap.h"
 #include "esp_sleep.h"
+#include "swing_socket_app.h"
+#include "string.h"
+
+
+
 
 #if USER_DEBUG
     static const char *TAG = "[MAIN]";
@@ -54,12 +62,11 @@ Http_ota_server_t Server;
 _StationConfig StConfig;
 _StationData StData;
 char IP_server[50];
-char StartImgName[50]="Image_reset";
-
+char StartImgName[30]="Image_reset";
+void Cmd_hal_task(void *pvParameter);
 char *info_path 	= "/sdcard/info.txt";
 char *err_path 	= "/sdcard/err.txt";
 char *data_path 	= "/sdcard/data.txt";
-char Sd_buff[512];
 EventGroupHandle_t s_wifi_event_group;
 void Nvs_init(void);
 void DNS_server_init(void);
@@ -70,68 +77,77 @@ uint32_t Start_Post_Time =0;
 uint32_t Start_Get_Time =0;
 uint8_t Cnt_Http_err = 0;
 uint32_t start_get_power =0;
-
+TaskHandle_t socket_Tag;
 void GPIO_Config();
 void  SD_Card_Write_Data(char *Path,char *data);
+esp_err_t Esp_nvs_read_write_uint32(char *key,uint32_t *value,int mode);
+
+
+uint8_t ESP_ID[6];
+char ESP_ID_CHAR[20] ={0};
+
+uint8_t cablib_salinity =0;
+uint8_t cablib_salinity_val =0;
+uint8_t cablib_Ph71 =0;
 
 void app_main(void)
 {
-	// uart_config_t uart_config = {
-	// 		.baud_rate = 115200,
-	// 		.data_bits = UART_DATA_8_BITS,
-	// 		.parity = UART_PARITY_DISABLE,
-	// 		.stop_bits = UART_STOP_BITS_1,
-	// 		.flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-	// };
-    // if (uart_param_config(UART_NUM_0, &uart_config)) return -3;
-    // if (uart_set_pin(UART_NUM_0, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE)) return -4;
-	// if (uart_driver_install(UART_NUM_0, 1024 * 2, 1024 * 2, 0, NULL, 0)) return -5;
-
 	Nvs_init();
+		uart_config_t uart_config = {
+			.baud_rate = 115200,
+			.data_bits = UART_DATA_8_BITS,
+			.parity = UART_PARITY_DISABLE,
+			.stop_bits = UART_STOP_BITS_1,
+			.flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+	};
+    if (uart_param_config(UART_NUM_0, &uart_config)) esp_restart();
+    if (uart_set_pin(UART_NUM_0, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE)) esp_restart();
+	if (uart_driver_install(UART_NUM_0, 1024 * 2, 1024 * 2, 0, NULL, 0)) esp_restart();
+	uint32_t id_tmp = 6201;
+	if(Esp_nvs_read_write_uint32("IDCONFIG",&id_tmp,0)!= ESP_OK)
+	{
+		USER_LOGE(TAG,"ID not set");
+		id_tmp = 6201;
+		if(Esp_nvs_read_write_uint32("IDCONFIG",&id_tmp,1) == ESP_OK)
+		{
+			USER_LOGI(TAG,"set id: %d done",id_tmp);
+		}
+		else
+		{
+			vTaskDelay(100);
+			USER_LOGE(TAG,"set id: %d done",id_tmp);
+			esp_restart();
+		}
+		
+	}
+	USER_LOGI(TAG,"id: %d",id_tmp);
+	StConfig.ID =id_tmp;
+	esp_efuse_mac_get_default(ESP_ID);
+	sprintf(ESP_ID_CHAR,"H_%02X%02X%02X%02X%02X%02X",ESP_ID[0],ESP_ID[1],ESP_ID[2],ESP_ID[3],ESP_ID[4],ESP_ID[5]);
+
+	if (xTaskCreate(Cmd_hal_task, "Cmd_hal_task", 4096, NULL, 1, NULL) != pdPASS)
+	{
+		esp_restart();
+		//return -1;
+	}
 
 	System_Timer();
 	GPIO_Config();
-	StConfig.ID =6201;
+
+	
 	Power_Init();
 	StationCongig_Init();
 	if(ModbusMaster_Init() != 1)
     {
-        ESP_LOGE(TAG,"Modbus Init fail");
+        USER_LOGE(TAG,"Modbus Init fail");
     }
-    ESP_LOGI(TAG,"Modbus Init done");
-
+    USER_LOGI(TAG,"Modbus Init done");
 	DNS_server_init();
 
 	Spi_Ethernet_Init();
 	Turn_off_all_relay();
-    ESP_LOGI(TAG,"reset all device 30s cpu clock: %d\n",ets_get_cpu_frequency());
+    USER_LOGI(TAG,"reset all device 30s cpu clock: %d\n",ets_get_cpu_frequency());
 
-	Turn_on_relay(RELAY_1);
-	ESP_LOGI(TAG,"Turn_on_relay: %d\n",ets_get_cpu_frequency());
-	vTaskDelay(2000);
-
-	// while(1)
-	// {
-	// 	    Turn_on_relay(RELAY_1);
-	// 		ESP_LOGI(TAG,"Turn_on_relay: %d\n",ets_get_cpu_frequency());
-	// 		vTaskDelay(1000);
-	// 		Turn_off_relay(RELAY_1);
-	// 		ESP_LOGI(TAG,"Turn_off_relay: %d\n",ets_get_cpu_frequency());
-	// 		vTaskDelay(1000);
-	// }
-    /*---------begin int ota server------------ */
-	//Get_ip_server(StConfig.Server_Url,IP_server);
-    // Server.ApiKey = malloc(100);
-    // sprintf(Server.ApiKey,"B423713AB2769F83889D9520C6794656");
-    // Server.Url = malloc(100);
-    // sprintf(Server.Url,"http://firmware.namlongtekgroup.com/GetfileUpdate");
-    // Server.foder = malloc(100);
-	// sprintf(Server.foder,"canhbaongap/Firmware/");
-    // Server.filename = malloc(100);
-	// sprintf(Server.filename,"Firmware_%d.bin",StConfig.ID);
-	
-	
-	
     /*---------end int ota server------------ */
     int free_reg=0,Free_cur=1;
 //    Ota_socket();
@@ -144,7 +160,7 @@ void app_main(void)
 	  };
 	Imgclient = esp_http_client_init(&config);
 	if (Imgclient == NULL) {
-	        ESP_LOGE(TAG, "Failed to initialise HTTP connection");
+	        USER_LOGE(TAG, "Failed to initialise HTTP connection");
 	}
 	esp_http_client_set_method(Imgclient, HTTP_METHOD_POST);
 	esp_http_client_set_header(Imgclient,"Content-Type","application/x-www-form-urlencoded");
@@ -159,42 +175,68 @@ void app_main(void)
 	esp_http_client_set_method(Dataclient, HTTP_METHOD_POST);
 	esp_http_client_set_header(Dataclient,"APIKEY",StConfig.ApiKey);
 	uint8_t try = 3;
-	char Image_tmp[30];
-	wifi_init_softap();
-
+	char Image_tmp[50];
+	
 	if (ppposInit() < 0) {
-		ESP_LOGE(TAG,"ppposInit faile,module offline\n");
-		sprintf(Sd_buff,"ppposInit faile,module offline");
-		//SD_Card_Write_Data(err_path,Sd_buff);
+		USER_LOGE(TAG,"ppposInit faile,module offline");
     }/*--------end init module 3G------------*/
-
-
-
 
 	start_get_power =0;
 	Start_Get_Time =0;
 	Start_Post_Time=0;
     while (1) {
-		//esp_task_wdt_reset();
-		//esp_task_wdt_feed();
 		if(Get_mili() >start_get_power)
 		{
 			Power_Process(&StData.Acquy);
-			ESP_LOGI(TAG,"acquy 0: %d mV",StData.Acquy.Vol);
+			USER_LOGI(TAG,"acquy 0: %d mV",StData.Acquy.Vol);
+
 			if(StData.Acquy.Volume < 15 )
 			{
-				ESP_LOGE(TAG," -------turn off all device\n");
+				USER_LOGE(TAG," -------turn off all device");
+
 				//Turn_on_relay(RELAY_1);
 			}
 			if(StData.Acquy.Volume>40)
 			{
-				ESP_LOGI(TAG," -------turn on all device\n");
+				USER_LOGI(TAG," -------turn on all device");
+
 				//Turn_off_relay(RELAY_1);
 			}
 			start_get_power +=300000;
 		}
-		if(Start_Get_Time <Get_mili())
+		vTaskDelay(1);
+		if(cablib_salinity)
+		{	
+			Calib_sanity(cablib_salinity_val);
+			cablib_salinity = 0;
+		}
+		if(cablib_Ph71)
 		{
+			Calib_PH();
+			cablib_Ph71 = 0;
+		}
+		if(Start_Post_Time <Get_mili())
+		{
+			int ppstatus;
+			if((ppstatus = ppposStatus()) != GSM_STATE_CONNECTED)
+			{
+					if (ppposInit() < 0) {
+						USER_LOGE(TAG,"ppposInit faile,module offline");
+					}/*--------end init module 3G------------*/
+					else
+					{
+						USER_LOGI(TAG,"ppposInit done");
+					}
+
+			}
+			else
+			{
+				USER_LOGE(TAG,"ppposStatus: %d",ppstatus);
+			}
+			Turn_on_relay(RELAY_1);
+			USER_LOGI(TAG,"Turn_on_relay: %d\n",ets_get_cpu_frequency());
+			vTaskDelay(3000);
+			
 			if(esp_server_get_config(Dataclient)==200)
 			{
 				Start_Get_Time += 300000;
@@ -207,7 +249,7 @@ void app_main(void)
 					}
 					else
 					{
-						ESP_LOGE(TAG, "OTA FAIL ");
+						USER_LOGE(TAG, "OTA FAIL ");
 					}
 				}
 			}
@@ -215,8 +257,7 @@ void app_main(void)
 			{
 				if((Cnt_Http_err++)>5)
 				{
-					sprintf(Sd_buff,"Cnt_Http_err :%d",Cnt_Http_err);
-					//SD_Card_Write_Data(err_path,Sd_buff);
+
 					esp_restart();
 				}
 			}
@@ -225,67 +266,60 @@ void app_main(void)
 			{
 				break;
 			}
-			ESP_LOGI(TAG,"free heap : %d byte, %d byte",Free_cur,Free_cur-free_reg);
+			USER_LOGI(TAG,"free heap : %d byte, %d byte",Free_cur,Free_cur-free_reg);
+
 			free_reg = Free_cur;
-			ESP_LOGI(TAG,"Time system: %02d:%02d",StConfig.gio,StConfig.phut);
+			USER_LOGI(TAG,"Time system: %02d:%02d",StConfig.gio,StConfig.phut);
 			if((StConfig.gio>17)||(StConfig.gio<6))
 			{
 				//batden
 				Turn_on_relay(RELAY_3);
-				ESP_LOGI(TAG,"Bat den \n");
+				USER_LOGI(TAG,"Bat den");
 			}
 			else 
 			{
 				//tatden
 				Turn_off_relay(RELAY_3);
-				ESP_LOGI(TAG,"tat den \n");
+				USER_LOGI(TAG,"tat den");
 			}	
-		}
-//    	if(StConfig.IsUpdateName ==0)
-		if(Start_Post_Time < Get_mili())
-		{
 			Read_all_data();
 			try =3;
 			do{
 				sprintf(Image_tmp,"%s_%d_%llu.jpg",StartImgName,StConfig.ID,Get_mili());
-				ESP_LOGI(TAG,"Imagename_t: %s",Image_tmp);
+				USER_LOGI(TAG,"Imagename_t: %s",Image_tmp);
 				if( (res= Update_image(Imgclient,Image_tmp))<1000)
 				{
-					//sprintf(StData.Cam.ImageName,"%s_%d_%d_%llu.jpg","UpdateErr",StConfig.ID,res,Get_mili());
-					ESP_LOGE(TAG,"Failed to update image,err: %d",res);
-
-					//sprintf(Sd_buff,"Update_image err :%d",res);
+					USER_LOGE(TAG,"Failed to update image,err: %d",res);
 					sprintf(StData.Cam.ImageName,"err_%s",Image_tmp);
-					//SD_Card_Write_Data(err_path,Sd_buff);
 				}
 				else
 				{
 					sprintf(StData.Cam.ImageName,"%s",Image_tmp);
-					ESP_LOGI(TAG,"Imagename: %s",StData.Cam.ImageName);
+					USER_LOGI(TAG,"Imagename: %s",StData.Cam.ImageName);
 					break;
 				}
 				delay(2000);
 			}while(try --);
-			int t = Network_Send_StationData(Dataclient);	
+			Network_Send_StationData(Dataclient);	
 			Start_Post_Time = Get_mili() + StConfig.Delaytime *60*1000 - 30000; //khoi dong truoc 30s
-			ESP_LOGI(TAG,"Post data delay: %d", StConfig.Delaytime *60*1000);
+			USER_LOGI(TAG,"Post data delay: %d s", StConfig.Delaytime *60);
+			if(StConfig.Delaytime>=5)
+			{
+				Turn_off_relay(RELAY_1);
+				ppposDisconnect(1,1);
+				//delay(StConfig.Delaytime *60*1000);
+				//esp_restart();
+				// USER_LOGI(TAG,"ppposStatus wait idle");
+				// while(ppposStatus() != GSM_STATE_IDLE);
+				// USER_LOGI(TAG,"uc enter CFUN=4");
+				// atCmd_waitResponse("AT+CFUN=4\r\n", "OK\r\n", NULL, -1, 1000, NULL, 0);
+				//esp_sleep_enable_timer_wakeup(StConfig.Delaytime *60*1000);
+			}
 		}
 		gpio_set_level(LED_STATUS_1, StConfig.Cnt%2);
-		
 		if((StConfig.IsReset ==1)||(Get_mili() > 400000000))
 		{
 			esp_restart();
-		}
-		if(StConfig.Delaytime>=5)
-		{
-			Turn_off_relay(RELAY_1);
-			ppposDisconnect(1,1);
-			vTaskDelay(StConfig.Delaytime *60*1000);
-			// ESP_LOGI(TAG,"ppposStatus wait idle");
-			// while(ppposStatus() != GSM_STATE_IDLE);
-			// ESP_LOGI(TAG,"uc enter CFUN=4");
-			// atCmd_waitResponse("AT+CFUN=4\r\n", "OK\r\n", NULL, -1, 1000, NULL, 0);
-			//esp_sleep_enable_timer_wakeup(StConfig.Delaytime *60*1000);
 		}
 		else
 		{
@@ -300,28 +334,28 @@ void app_main(void)
 void  SD_Card_Write_Data(char *Path,char *data)
 {
 	/*denit spi bus */
-	ESP_LOGW(TAG,"begin Hspi_denit()");
+	USER_LOGW(TAG,"begin Hspi_denit()");
 	Hspi_denit();
-	ESP_LOGW(TAG,"end Hspi_denit()");
+	USER_LOGW(TAG,"end Hspi_denit()");
 	if(Sd_card_init() >0)
 	{
-		ESP_LOGI(TAG, "Opening file");
+		USER_LOGI(TAG, "Opening file");
 		FILE* f = fopen(Path, "a");
 		if (f == NULL) {
-			ESP_LOGE(TAG, "Failed to open file for writing");
+			USER_LOGE(TAG, "Failed to open file for writing");
 		}
 		else
 		{
 			fprintf(f, "%s\n",data);
 			fclose(f);
-			ESP_LOGI(TAG, "File: %s written",Path);
+			USER_LOGI(TAG, "File: %s written",Path);
 		}
 		//wite to sd card -----------------------
 		Sd_card_denit();
 	}
-	ESP_LOGW(TAG,"begin Hspi_init()");
+	USER_LOGW(TAG,"begin Hspi_init()");
 	Spi_Ethernet_Init();
-	ESP_LOGW(TAG,"end Hspi_init()");
+	USER_LOGW(TAG,"end Hspi_init()");
 	
 }
 void Nvs_init(void)
@@ -341,12 +375,12 @@ void DNS_server_init(void)
 {
 	/*--------begin init DNS server------------*/
 	ip_addr_t dnsserver;
-	ESP_LOGI(TAG, "SYSTEM_EVENT_STA_GOT_IP");
+	USER_LOGI(TAG, "SYSTEM_EVENT_STA_GOT_IP");
 	inet_pton(AF_INET, "8.8.8.8", &dnsserver);
 	dns_setserver(0, &dnsserver);
 	inet_pton(AF_INET, "8.8.4.4", &dnsserver);
 	dns_setserver(1, &dnsserver);
-	ESP_LOGI(TAG, "SET DNS SERVER DONE");
+	USER_LOGI(TAG, "SET DNS SERVER DONE");
 	/*--------end init DNS server------------*/
 }
 static void System_Timer(void)
@@ -380,7 +414,6 @@ void delay(int dl)
 		vTaskDelay(1);
 	}
 }
-
 void StationCongig_Init()
 {
 
@@ -396,6 +429,16 @@ void StationCongig_Init()
 	sprintf(StConfig.ApiKey,"6DF34EFB0DE43E4CE3DB02497110F4E7");
 	sprintf(StConfig.UploadUrl,"http://api.canhbaongap.com/upload.php");
 	//sprintf(StConfig.UploadUrl,"http://quantrackhongkhi.namlongtekgroup.com/api/Embedded/InsertImage");
+
+	Server.ApiKey = malloc(100);
+    sprintf(Server.ApiKey,"%s",StConfig.ApiKey);
+    Server.Url = malloc(100);
+    sprintf(Server.Url,"%s",StConfig.Ota_URL);
+    Server.foder = malloc(100);
+	sprintf(Server.foder,"canhbaongap/Firmware/");
+    Server.filename = malloc(100);
+	sprintf(Server.filename,"Firmware_%d.bin",StConfig.ID);
+
 	StConfig.HH = 0;
 	StConfig.Delaytime = 5;  //Phut
 	StConfig.LV = 0;
@@ -443,28 +486,6 @@ void StationCongig_Init()
 	StData.Salinity.active=1;
 
 }
-
-// void Get_ip_server(char *Url,char* ip)
-// {
-//     const struct addrinfo hints = {
-//         .ai_family = AF_INET,
-//         .ai_socktype = SOCK_STREAM,
-//     };
-//     struct addrinfo *res;
-//     struct in_addr *addr;
-
-//     int err = getaddrinfo(Url, "80", &hints, &res);
-//     if(err != 0 || res == NULL) {
-//         ESP_LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
-//         vTaskDelay(1000 / portTICK_PERIOD_MS);
-//     }
-//     /* Code to print the resolved IP.
-//        Note: inet_ntoa is non-reentrant, look at ipaddr_ntoa_r for "real" code */
-//     addr = &((struct sockaddr_in *)res->ai_addr)->sin_addr;
-//     ESP_LOGI(TAG, "DNS lookup successfull server: %s IP=%s",Url, inet_ntoa(*addr));
-//     sprintf(ip,"%s", inet_ntoa(*addr));
-//     freeaddrinfo(res);
-// }
 void GPIO_Config()
 {
 	gpio_config_t io_conf;
@@ -499,50 +520,342 @@ int Get_data_inFlash(char *Name)
 
     err = nvs_open("storage", NVS_READWRITE, &my_handle);
     if (err != ESP_OK) {
-    	ESP_LOGE(TAG,"Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+    	USER_LOGE(TAG,"Error (%s) opening NVS handle!", esp_err_to_name(err));
     } else {
         // Read
          // value will default to 0, if not set yet iint Set_id_inFlash(void);n NVS
         err = nvs_get_i32(my_handle, Name, &value);
         switch (err) {
             case ESP_OK:
-            	ESP_LOGI(TAG," Get data done:  %d\n", value);
+            	USER_LOGI(TAG," Get data done:  %d", value);
                 break;
             case ESP_ERR_NVS_NOT_FOUND:
-            	ESP_LOGW(TAG,"The Id is not initialized yet!\n");
+            	USER_LOGW(TAG,"The Id is not initialized yet!");
             	value = -1;
                 break;
             default :
-            	ESP_LOGE(TAG,"Error (%s) reading!\n", esp_err_to_name(err));
+            	USER_LOGE(TAG,"Error (%s) reading!", esp_err_to_name(err));
             	value = -1;
         }
         err = nvs_commit(my_handle);
         if(err != ESP_OK)
         {
-        	ESP_LOGE(TAG,"nvs_commit fail\n");
+        	USER_LOGE(TAG,"nvs_commit fail");
         	value = -1;
         }
         nvs_close(my_handle);
     }
     return value;
 }
+esp_err_t Esp_nvs_read_write_uint32(char *key,uint32_t *value,int mode)
+{   
+    uint32_t tmp =0;
+    esp_err_t err;
+    nvs_handle my_handle;
+    err = nvs_open("storage", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG,"Error (%s) opening NVS handle!", esp_err_to_name(err));
+    } else {
+        if(mode == 0) // read
+        {
+            err = nvs_get_u32(my_handle,key,&tmp);
+            switch (err) {
+                case ESP_OK:
+                     ESP_LOGW(TAG,"The value %s was nvs_get_u32 yet!",key);
+                    break;
+                case ESP_ERR_NVS_NOT_FOUND:
+                    ESP_LOGE(TAG,"The value %s not initialized yet!",key);  // write 0
+                    break;
+                default :
+                    ESP_LOGE(TAG,"Error (%s) reading!", esp_err_to_name(err));
+                    break;
+            }
+            *value = tmp;
+        }
+        else{
+                if((err = nvs_set_u32(my_handle,key,*value)) != ESP_OK)
+                {
+                    ESP_LOGE(TAG,"Error (%s) when nvs_set_u32!", esp_err_to_name(err));
+                }
+                err = nvs_commit(my_handle);
+                if(err != ESP_OK){
+                    ESP_LOGE(TAG,"Error (%s) when nvs_commit!", esp_err_to_name(err));
+                }
+                else
+                    ESP_LOGI(TAG,"nsv_commit done");
+        }
+        nvs_close(my_handle);
+    }
+    return err;
+}
+esp_err_t Esp_nvs_erase_all(void)
+{
+    esp_err_t err;
+    nvs_handle my_handle;
+    err = nvs_open("storage", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG,"Error (%s) opening NVS handle!", esp_err_to_name(err));
+    } else {
+        err = nvs_erase_all(my_handle);
+        if(err != ESP_OK){
+            ESP_LOGE(TAG,"Error (%s) when nvs_erase_all!", esp_err_to_name(err));
+        }
+        err = nvs_commit(my_handle);
+        if(err != ESP_OK){
+            ESP_LOGE(TAG,"Error (%s) when nvs_commit!", esp_err_to_name(err));
+        }
+        else
+        {
+            ESP_LOGE(TAG,"nvs_erase_all commit done");
+        }
+        nvs_close(my_handle);
+    }
+    return err;
+}
 
-//printf(" Hello world version 1.1!\n");
-//
-//sprintf(Server.foder,"canhbaongap/Station_Config");
-//sprintf(Server.filename,"Station_%d_config.txt",37);
-//if(Ota_start(Server)<0)
-//{
-//	vTaskDelay(5000);
-//}
-//Free_cur = xPortGetFreeHeapSize();
-//if(Free_cur < 50000)
-//{
-//	break;
-//}
-//ESP_LOGI(TAG,"free heap : %d byte, %d byte",Free_cur,Free_cur-free_reg);
-//free_reg = Free_cur;
-//sprintf(Server.foder,"canhbaongap/Firmware");
-//sprintf(Server.filename,"Firmware_%d.bin",37);
-//ota_update(Server);
-//vTaskDelay(20000);
+int Get_string_json(char * des,const char * json,const char *key)
+{
+    char key_tmp[100];
+    sprintf(key_tmp,"\"%s\":",key);
+    char *start = strstr(json,key_tmp);
+    if(!start)			//key add "" not found
+    {
+    	sprintf(key_tmp,"%s:",key);
+    	if(!(start = strstr(json,key_tmp)))
+        	return -1;
+    }
+    int sizekey = strlen(key_tmp);
+    int size=0;
+    start +=sizekey; //moves to the beginning of the value
+    //printf("%s\n",start );
+    char *end;
+    if(*(start)=='[') //value is a array
+    {
+    	start +=1;
+    	if(!(end = strstr(start,"]")))	//end of array
+        	return -1;
+        size = (int)end - (int)start;
+    }
+    else 
+    {	
+    	//printf("%s\n",start );
+	    if(!(end = strstr(start,",")))
+	    {
+	    	if(!(end = strstr(start,"}")))
+        		return -1;	
+	    }
+	    //printf("end:%s\n",end );
+	    if(*(start)=='\"') //value is a strings;
+	    {
+	    	start +=1;
+	    	size = (int)end - (int)start -1;
+	    }
+	    else
+	    {
+	    	size = (int)end - (int)start;
+	    }
+	}
+	if(size<0)
+		return -1;
+    memcpy(des,start,size);
+    des[size]=0;
+    //printf("des: %d\n",size);
+    return size;
+}
+int Get_int_json(int *des,const char * json,const char *key)
+{
+    char tmp[50];
+    if(Get_string_json(tmp,json,key)>0)
+    {
+        *des =  atoi(tmp);
+        return *des;
+    }
+    return -1;
+}
+void Calib_sanity(uint16_t sample)
+{
+	USER_LOGE(TAG,"start calib sanity: %d",sample);
+	vTaskDelay(1);
+	if(MBm_Write_signal_data(4,40001+0x23,0x03) == MB_OK)
+	{
+		if(MBm_Write_signal_data(4,40001+0x24,0x02) == MB_OK)
+		{	if(MBm_Write_signal_data(4,40001+0x40,0x60) == MB_OK)
+			{
+				USER_LOGE(TAG,"Enter the calibration successful");
+				if(MBm_Write_signal_data(4,40001+0x41,sample) == MB_OK)
+				{
+					USER_LOGE(TAG,"Wait for 2 minutes");
+					for(uint8_t i =90;i>0;i--)
+					{
+						USER_LOGE(TAG,"time remaing: %d",i);
+						delay(1000);
+					}
+					uint16_t result =100;
+					MBm_Read_data_hoilding(4,40001+0x43,1,&result);
+					USER_LOGE(TAG,"result: %d",result);
+					return;
+				}
+			}
+		}
+		else
+		{
+			USER_LOGE(TAG,"MBm_Write_signal_data(4,40001+0x24,0x02)");
+		}
+	}
+	USER_LOGE(TAG,"MBm_Write_signal_data(4,40001+0x23,0x03)");
+}
+void Calib_PH()
+{
+	USER_LOGE(TAG,"start calib PH");
+	if(MBm_Write_signal_data(5,40001+0x40,0x60) == MB_OK)
+	{
+		USER_LOGE(TAG,"Enter the calibration successful");
+		if(MBm_Write_signal_data(5,40001+0x41,0x04) == MB_OK)
+		{
+			USER_LOGE(TAG,"Wait for 10 seconds");
+
+			delay(15000);
+			{
+				uint16_t result =100;
+				MBm_Read_data_hoilding(5,40001+0x43,1,&result);
+				USER_LOGE(TAG,"result: %d",result);
+				return;
+			}
+		}
+		else
+		{
+			/* code */
+		}
+		
+	}
+	USER_LOGE(TAG,"the calibration fail");
+}
+
+typedef enum{
+	GET_ID=1,
+	SET_ID,
+	GET_TIME,
+	SET_CABLIB_SALINITY,
+	SET_CABLIB_PH,
+	RESET_DEFAULT,
+	RESET
+
+}cmd_hal;
+char System_handles_out[257];
+int System_handles(char *cmd,char * output)
+{
+	USER_LOGW(TAG, "recv: %s",(char *)cmd);
+	int cmd1 = -1;
+	if(Get_int_json(&cmd1,cmd,"cmd")>=0)
+	{
+		switch (cmd1)
+		{
+		case GET_ID:
+			USER_LOGI(TAG, "Id : %d",StConfig.ID);
+			break;
+		case SET_ID:
+			if(Get_int_json(&cmd1,cmd,"val")>=0)
+			{
+				USER_LOGI(TAG, "set id : %d",cmd1);
+				uint32_t id_set = cmd1;
+				if(Esp_nvs_read_write_uint32("IDCONFIG",&id_set,1) == ESP_OK)
+				{
+					USER_LOGI(TAG,"set id: %d done",cmd1);
+					USER_LOGI(TAG,"reset_esp");
+					vTaskDelay(200);
+						esp_restart();
+				}
+				else
+					USER_LOGE(TAG, "store nsv fail");
+			}
+			else
+			{
+				USER_LOGE(TAG, "get val fail");
+			}
+			/* code */
+		break;
+		case SET_CABLIB_SALINITY:
+			if(Get_int_json(&cmd1,cmd,"val")>=0)
+			{
+				USER_LOGI(TAG, "set request cablib salinity: %d done",cmd1);
+				cablib_salinity_val = cmd1;
+				cablib_salinity =1;
+				
+			}
+		/* code */
+		break;
+		case SET_CABLIB_PH:
+			USER_LOGI(TAG, "set request cablib PH done");
+			cablib_Ph71 =1;
+			
+		/* code */
+		break;
+		case RESET_DEFAULT:
+			Esp_nvs_erase_all();
+			esp_restart();
+		/* code */
+		break;
+		case RESET:
+		/* code */
+		break;
+		default:
+			USER_LOGE(TAG, "fail value cmd: %d",cmd1);
+			break;
+		}
+			// if(cmd1 == 1)
+			// {
+			// 	if(Get_int_json(&cmd1,cmd,"val"))
+			// 		//Calib_sanity(cmd1);
+			// 	{
+			// 		//salinityCablib = 1;
+			// 		return sprintf(output,"set salinityCablib : 1\n");
+			// 	}
+			// }
+			// else if(cmd1 == 2)
+			// {
+			// 	//Calib_PH();
+			// }
+			// else
+			// {
+			// 	USER_LOGE(System_handles,"fail value cmd: %d",cmd1);
+			// 	// Socketcontrol_out(output,outsize);
+			// }
+	}
+	else
+	{
+		USER_LOGE(TAG, "json fail");
+	}
+	return 0;
+}
+
+void Cmd_hal_task(void *pvParameter)
+{
+	char line[256] = {0};
+	int count = 0;
+	uint8_t cnt_tmp =0;
+	for(;;)
+	{
+		count = 0;
+		while (1) {
+            int s = uart_read_bytes(UART_NUM_0,(uint8_t *)line+count,127,10);
+			if(s > 0 )
+			{
+				count += s;
+				if (strstr(line,"\r\n")) {
+					line[count] = '\0';
+					break;
+				}
+				if(count >100)
+					break;
+				
+			}
+			cnt_tmp ++;
+            if(cnt_tmp ==0)
+				vTaskDelay(1);			//10ms
+        }
+		//USER_LOGW(System_handles,"recv: %s",line);
+		System_handles(line,System_handles_out);
+		vTaskDelay(1);
+		
+	}
+}

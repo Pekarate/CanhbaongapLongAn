@@ -283,7 +283,7 @@ static int Get_Data_String(char *src,char *content,char *des)
 	    {//	if(!wizphy_getphylink())
     	//	{
     	//		#if CAM_DEBUG
-    	//        	ESP_LOGE(TAG,"The cable is not plugged in");
+    	//        	USER_LOGE(TAG,"The cable is not plugged in");
     	//        #endif
     	//        return -11;
     	//	}
@@ -318,7 +318,7 @@ int Update_image(esp_http_client_handle_t client,char *Image_name)
 	if(!wizphy_getphylink())
 	{
 		#if CAM_DEBUG
-        	ESP_LOGE(TAG,"The cable is not plugged in");
+        	USER_LOGE(TAG,"The cable is not plugged in");
         #endif
         return -11;
 	}
@@ -334,7 +334,7 @@ int Update_image(esp_http_client_handle_t client,char *Image_name)
 
 	if(esp_http_client_set_header(client,"Filename",Image_name)!= ESP_OK)
 	{
-            ESP_LOGE(TAG,"esp_http_client_set_header fail");
+            USER_LOGE(TAG,"esp_http_client_set_header fail");
     }
 	
     int socketID = eth_socket(0,Sn_MR_TCP,50612, 0);
@@ -379,7 +379,7 @@ int Update_image(esp_http_client_handle_t client,char *Image_name)
                                 	//goi du lieu dau tien bao gom header va image data
                                 	image_size = Get_Content_length((char *)Buffer_t);
                                     #if CAM_DEBUG
-                                                    ESP_LOGI(TAG,"Image size: %d byte",image_size );
+                                                    USER_LOGW(TAG,"Image size: %d byte",image_size );
                                     #endif
                                     char *src1=NULL;
                                     src1 = strstr((char *)Buffer_t,"\r\n\r\n"); //cắt chuỗi từ content trở đi => str1
@@ -387,7 +387,7 @@ int Update_image(esp_http_client_handle_t client,char *Image_name)
                                     {
                                         Image_index = strlen((char *)Buffer_t) - strlen(src1)+4;
 										#if CAM_DEBUG
-                                                   ESP_LOGI(TAG,"Image index: %d ",Image_index );
+                                                   USER_LOGW(TAG,"Image index: %d ",Image_index );
 										#endif
                                         //esp_http_client_write(client,(const char *)Buffer_t+Image_index,len-Image_index)
                                         /*-----------------ftp------------------*/
@@ -412,7 +412,7 @@ int Update_image(esp_http_client_handle_t client,char *Image_name)
                                 	/*-----------------ftp------------------*/
                                 }
 								#if CAM_DEBUG
-									ESP_LOGI(TAG,"Processing img: %d %c",(tot*100)/image_size,'%');
+									USER_LOGI(TAG,"Processing img: %d %c",(tot*100)/image_size,'%');
 								#endif
                             }
                             else
@@ -426,13 +426,13 @@ int Update_image(esp_http_client_handle_t client,char *Image_name)
                     {
                     	esp_http_client_fetch_headers(client);
 						int status_code = esp_http_client_get_status_code(client);
-						ESP_LOGI(TAG, "tot: %d byte,status_code: %d",tot,status_code);
+						USER_LOGI(TAG, "tot: %d byte,status_code: %d",tot,status_code);
 						len = esp_http_client_read(client,(char *)Buffer_t,CAM_BUFFER);
 						if(len >0)
 						{
 							Buffer_t[len] =0;
 							#if CAM_DEBUG
-								ESP_LOGI(TAG, "recv: %d byte:%s",len,Buffer_t);
+								USER_LOGI(TAG, "recv: %d byte:%s",len,Buffer_t);
 							#endif
 						}
 						/*-----------------ftp------------------*/
@@ -440,7 +440,7 @@ int Update_image(esp_http_client_handle_t client,char *Image_name)
                     }
                     else{
 						#if CAM_DEBUG
-								ESP_LOGE(TAG,"tot: %d,image_size: %d,len: %d",tot,image_size,len);
+								USER_LOGE(TAG,"tot: %d,image_size: %d,len: %d",tot,image_size,len);
 						#endif
                     	res =-299;
                     }
@@ -461,7 +461,7 @@ int Update_image(esp_http_client_handle_t client,char *Image_name)
     if(eth_socket_close(0)!= SOCK_OK)
     {
 		#if CAM_DEBUG
-				ESP_LOGE(TAG,"eth_socket_close fail");
+				USER_LOGE(TAG,"eth_socket_close fail");
 		#endif
     }
     return res;
