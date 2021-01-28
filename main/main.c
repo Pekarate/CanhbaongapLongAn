@@ -235,8 +235,7 @@ void app_main(void)
 			}
 			Turn_on_relay(RELAY_1);
 			USER_LOGI(TAG,"Turn_on_relay: %d\n",ets_get_cpu_frequency());
-			vTaskDelay(3000);
-			
+			vTaskDelay(3500);
 			if(esp_server_get_config(Dataclient)==200)
 			{
 				Start_Get_Time += 300000;
@@ -273,13 +272,13 @@ void app_main(void)
 			if((StConfig.gio>17)||(StConfig.gio<6))
 			{
 				//batden
-				Turn_on_relay(RELAY_3);
+				Turn_on_relay(RELAY_2);
 				USER_LOGI(TAG,"Bat den");
 			}
 			else 
 			{
 				//tatden
-				Turn_off_relay(RELAY_3);
+				Turn_off_relay(RELAY_2);
 				USER_LOGI(TAG,"tat den");
 			}	
 			Read_all_data();
@@ -307,8 +306,8 @@ void app_main(void)
 			{
 				Turn_off_relay(RELAY_1);
 				ppposDisconnect(1,1);
-				//delay(StConfig.Delaytime *60*1000);
-				//esp_restart();
+				delay(StConfig.Delaytime *60*1000);
+				esp_restart();
 				// USER_LOGI(TAG,"ppposStatus wait idle");
 				// while(ppposStatus() != GSM_STATE_IDLE);
 				// USER_LOGI(TAG,"uc enter CFUN=4");
@@ -412,6 +411,7 @@ void delay(int dl)
 	while(Get_mili() < dl_t)
 	{
 		vTaskDelay(1);
+		rtc_wdt_feed();
 	}
 }
 void StationCongig_Init()
@@ -855,7 +855,8 @@ void Cmd_hal_task(void *pvParameter)
         }
 		//USER_LOGW(System_handles,"recv: %s",line);
 		System_handles(line,System_handles_out);
-		vTaskDelay(1);
+		vTaskDelay(10);
+		rtc_wdt_feed();
 		
 	}
 }
