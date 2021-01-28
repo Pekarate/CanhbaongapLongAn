@@ -27,7 +27,7 @@ uint8_t Module_connetct = 1;
 static int uart_num = UART_NUM_2;
 #define UART_GPIO_TX GPIO_NUM_17
 #define UART_GPIO_RX GPIO_NUM_16
-#define UART_BDRATE 4000000
+#define UART_BDRATE 115200
 
 #ifdef CONFIG_GSM_DEBUG
 #define GSM_DEBUG 1

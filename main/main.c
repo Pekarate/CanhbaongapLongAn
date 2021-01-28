@@ -204,17 +204,7 @@ void app_main(void)
 			}
 			start_get_power +=300000;
 		}
-		vTaskDelay(1);
-		if(cablib_salinity)
-		{	
-			Calib_sanity(cablib_salinity_val);
-			cablib_salinity = 0;
-		}
-		if(cablib_Ph71)
-		{
-			Calib_PH();
-			cablib_Ph71 = 0;
-		}
+
 		if(Start_Post_Time <Get_mili())
 		{
 			int ppstatus;
@@ -235,7 +225,17 @@ void app_main(void)
 			}
 			Turn_on_relay(RELAY_1);
 			USER_LOGI(TAG,"Turn_on_relay: %d\n",ets_get_cpu_frequency());
-			vTaskDelay(3500);
+			delay(35000);
+			if(cablib_salinity)
+			{	
+				Calib_sanity(cablib_salinity_val);
+				cablib_salinity = 0;
+			}
+			if(cablib_Ph71)
+			{
+				Calib_PH();
+				cablib_Ph71 = 0;
+			}
 			if(esp_server_get_config(Dataclient)==200)
 			{
 				Start_Get_Time += 300000;
