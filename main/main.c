@@ -103,11 +103,11 @@ void app_main(void)
     if (uart_param_config(UART_NUM_0, &uart_config)) esp_restart();
     if (uart_set_pin(UART_NUM_0, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE)) esp_restart();
 	if (uart_driver_install(UART_NUM_0, 1024 * 2, 1024 * 2, 0, NULL, 0)) esp_restart();
-	uint32_t id_tmp = 6201;
+	uint32_t id_tmp = 6208;
 	if(Esp_nvs_read_write_uint32("IDCONFIG",&id_tmp,0)!= ESP_OK)
 	{
 		USER_LOGE(TAG,"ID not set");
-		id_tmp = 6201;
+		id_tmp = 6208;
 		if(Esp_nvs_read_write_uint32("IDCONFIG",&id_tmp,1) == ESP_OK)
 		{
 			USER_LOGI(TAG,"set id: %d done",id_tmp);
@@ -620,7 +620,7 @@ int Get_string_json(char * des,const char * json,const char *key)
     char *start = strstr(json,key_tmp);
     if(!start)			//key add "" not found
     {
-    	sprintf(key_tmp,"%s:",key);
+    	sprintf(key_tmp,"%s:",key);	
     	if(!(start = strstr(json,key_tmp)))
         	return -1;
     }

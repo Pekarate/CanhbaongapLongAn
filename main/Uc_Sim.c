@@ -101,7 +101,7 @@ static GSM_Cmd cmd_Reset =
 	.cmd = "AT+QPOWD\r\n",
 	.cmdSize = sizeof("AT+QPOWD\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
-	.timeoutMs = 300,
+	.timeoutMs = 3000,
 	.delayMs = 30000,
 	.skip = 0,
 };
@@ -181,7 +181,7 @@ static GSM_Cmd cmd_Connect =
 static GSM_Cmd *GSM_Init[] =
 {
 		&cmd_AT,
-//		&cmd_Reset,
+		&cmd_Reset,
 		&cmd_EchoOff,
 		&cmd_RFOn,
 		&cmd_NoSMSInd,
