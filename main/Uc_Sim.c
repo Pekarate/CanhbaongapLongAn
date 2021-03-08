@@ -98,8 +98,8 @@ static GSM_Cmd cmd_NoSMSInd =
 
 static GSM_Cmd cmd_Reset =
 {
-	.cmd = "AT+QPOWD\r\n",
-	.cmdSize = sizeof("AT+QPOWD\r\n")-1,
+	.cmd = "AT+QPOWD=1\r\n",
+	.cmdSize = sizeof("AT+QPOWD=1\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 3000,
 	.delayMs = 30000,
