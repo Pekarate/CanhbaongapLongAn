@@ -100,7 +100,7 @@ static GSM_Cmd cmd_Reset =
 {
 	.cmd = "AT+QPOWD=1\r\n",
 	.cmdSize = sizeof("AT+QPOWD=1\r\n")-1,
-	.cmdResponseOnOk = GSM_OK_Str,
+	.cmdResponseOnOk = "POWERED DOWN",
 	.timeoutMs = 3000,
 	.delayMs = 30000,
 	.skip = 0,
