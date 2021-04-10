@@ -187,6 +187,7 @@ int Network_Send_StationData(esp_http_client_handle_t client)
                             "DTR=%d&SRS=%d&SRD=%s&"
                             "DTP=%d&PSS=%d&PSD=%s&"
                             "DTS=%d&SSS=%d&SSD=%s&"
+                            "CO2:%d&"         
                             "ET1=%d mv",
 							StConfig.ID,
 							StData.Acquy.Volume,StData.Acquy.description,\
@@ -195,6 +196,7 @@ int Network_Send_StationData(esp_http_client_handle_t client)
 							StData.Rain.data,StData.Rain.status,StData.Rain.description,\
 							StData.Ph.data,StData.Ph.status,StData.Ph.description,\
 							StData.Salinity.data,StData.Salinity.status,StData.Salinity.description,\
+                            StData.C02.data,
 							StData.Acquy.Vol);
 	//SD_Card_Write_Data(data_path,BodyData);                        
     esp_http_client_open(client,len);

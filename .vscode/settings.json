@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "*.ipp": "c"
+        "*.ipp": "c",
+        "array": "c",
+        "vector": "c",
+        "xstring": "c"
     }
 }

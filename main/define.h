@@ -72,6 +72,12 @@ typedef struct
     uint16_t reg;
     uint16_t data;
     uint16_t data_t;
+    uint16_t data_t1; // dành cho các cảm biến có nhiều dữ liệu như độ mặn.
+    uint16_t data_t2;
+    uint16_t data_t3;
+    uint16_t data_t4;
+    uint16_t data_t5;
+    uint16_t data_t6;
     uint8_t status;
     uint16_t description_len;
     char description[256];
@@ -83,6 +89,7 @@ typedef struct {
 	  Sensor_t Rain;
 	  Sensor_t Water_level;
 	  Sensor_t Salinity;
+      Sensor_t C02;  //them 1 đối tượng cho sensor mới   bước1
 	  Sensor_t Ph;
 	  _Energy Acquy;
 	  _Camera Cam;

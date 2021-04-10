@@ -485,6 +485,13 @@ void StationCongig_Init()
 	StData.Salinity.description_len=0;
 	StData.Salinity.active=1;
 
+	StData.CO2.ID=12;
+	StData.CO2.data=0;
+	StData.CO2.reg=40001; //thực chất thì ko cần cái này cũng được.cho nó về 0 cho chắc thôi
+	StData.CO2.description[0]=0;
+	StData.CO2.description_len=0;
+	StData.CO2.active=1;
+
 }
 void GPIO_Config()
 {
