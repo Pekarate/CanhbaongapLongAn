@@ -1,11 +1,9 @@
-ESP-IDF template app
-====================
+This monitoring station system is designed to observe various environmental parameters. Its features include:<br />
 
-This is a template application to be used with [Espressif IoT Development Framework](https://github.com/espressif/esp-idf).
-
-Please check [ESP-IDF docs](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html) for getting started instructions.
-
-*Code in this repository is in the Public Domain (or CC0 licensed, at your option.)
-Unless required by applicable law or agreed to in writing, this
-software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-CONDITIONS OF ANY KIND, either express or implied.*
+ + Monitoring water parameters such as salinity, pH levels, temperature, and water level.<br />
+ + Measuring additional metrics like wind direction and wind speed.<br />
+ + Collecting data through sensors connected via an RS485 port using the Modbus protocol.<br />
+ + Capturing images with a Hikvision camera connected through an Ethernet port.<br />
+ + Sending collected data to a server via a 4G module.<br />
+ + Entering a deep sleep mode after data transmission to conserve energy.<br />
+![Screenshot 2024-08-09 215746](https://github.com/user-attachments/assets/e2c2a7de-baf5-4979-bcd7-899850afe149)
